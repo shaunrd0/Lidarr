@@ -1,7 +1,9 @@
 import React from 'react';
 import { createAction } from 'redux-actions';
+import createAjaxRequest from 'Utilities/createAjaxRequest';
 import Icon from 'Components/Icon';
 import { icons, sortDirections } from 'Helpers/Props';
+import { updateItem } from 'Store/Actions/baseActions';
 import { createThunk, handleThunks } from 'Store/thunks';
 import translate from 'Utilities/String/translate';
 import createFetchHandler from './Creators/createFetchHandler';
@@ -28,6 +30,12 @@ export const defaultState = {
   items: [],
 
   columns: [
+    {
+      name: 'monitored',
+      columnLabel: () => translate('Monitored'),
+      isVisible: true,
+      isModifiable: false
+    },
     {
       name: 'medium',
       label: () => translate('Medium'),
@@ -113,6 +121,7 @@ export const FETCH_TRACKS = 'tracks/fetchTracks';
 export const SET_TRACKS_SORT = 'tracks/setTracksSort';
 export const SET_TRACKS_TABLE_OPTION = 'tracks/setTracksTableOption';
 export const CLEAR_TRACKS = 'tracks/clearTracks';
+export const TOGGLE_TRACK_MONITORED = 'tracks/toggleTrackMonitored';
 
 //
 // Action Creators
@@ -121,13 +130,52 @@ export const fetchTracks = createThunk(FETCH_TRACKS);
 export const setTracksSort = createAction(SET_TRACKS_SORT);
 export const setTracksTableOption = createAction(SET_TRACKS_TABLE_OPTION);
 export const clearTracks = createAction(CLEAR_TRACKS);
+export const toggleTrackMonitored = createThunk(TOGGLE_TRACK_MONITORED);
 
 //
 // Action Handlers
 
 export const actionHandlers = handleThunks({
-  [FETCH_TRACKS]: createFetchHandler(section, '/track')
+  [FETCH_TRACKS]: createFetchHandler(section, '/track'),
 
+  // Track-level monitor toggle — calls the fork-only PUT /track/monitor.
+  // Stock Lidarr nightly returns 405 (endpoint doesn't exist); the UI
+  // surfaces that via the spinner timing out / failing — caller should
+  // only show the column when the backend supports it.
+  [TOGGLE_TRACK_MONITORED]: function(getState, payload, dispatch) {
+    const { trackId, monitored } = payload;
+
+    dispatch(updateItem({
+      id: trackId,
+      section,
+      isSaving: true
+    }));
+
+    const promise = createAjaxRequest({
+      url: '/track/monitor',
+      method: 'PUT',
+      contentType: 'application/json',
+      data: JSON.stringify({ trackIds: [trackId], monitored }),
+      dataType: 'json'
+    }).request;
+
+    promise.done(() => {
+      dispatch(updateItem({
+        id: trackId,
+        section,
+        isSaving: false,
+        monitored
+      }));
+    });
+
+    promise.fail(() => {
+      dispatch(updateItem({
+        id: trackId,
+        section,
+        isSaving: false
+      }));
+    });
+  }
 });
 
 //

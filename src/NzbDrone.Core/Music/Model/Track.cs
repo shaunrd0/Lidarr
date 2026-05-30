@@ -31,6 +31,15 @@ namespace NzbDrone.Core.Music
         public int MediumNumber { get; set; }
         public int TrackFileId { get; set; }
 
+        // Default to monitored=true. The schema migration sets DEFAULT 1, but
+        // that only applies when an INSERT omits the column. Lidarr's
+        // BasicRepository's auto-INSERT always sends ALL mapped columns —
+        // including this one. Without an explicit C# default, every newly
+        // inserted track would get Monitored=false, overriding the schema
+        // default and breaking the "new tracks are monitored by default"
+        // contract that backwards-compat with stock Lidarr depends on.
+        public bool Monitored { get; set; } = true;
+
         [MemberwiseEqualityIgnore]
         public bool HasFile => TrackFileId > 0;
 
@@ -81,6 +90,7 @@ namespace NzbDrone.Core.Music
             AlbumReleaseId = other.AlbumReleaseId;
             ArtistMetadataId = other.ArtistMetadataId;
             TrackFileId = other.TrackFileId;
+            Monitored = other.Monitored;
         }
     }
 }

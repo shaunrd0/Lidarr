@@ -1,0 +1,46 @@
+# syntax=docker/dockerfile:1.7
+#
+# Multi-stage build for the local Lidarr fork (shaunrd0/Lidarr).
+#
+# Stage 1 (builder): .NET 8 SDK + Node 20 + yarn — runs upstream's build.sh
+#                    targeting linux-musl-x64/net8.0 only.
+# Stage 2 (runtime): hotio/lidarr:nightly — inherits hotio's s6-overlay
+#                    PUID/PGID/UMASK entrypoint; we only swap in our binaries
+#                    over /app/bin/. Keeps lidarr-shared's config + restic
+#                    backup story unchanged.
+
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS builder
+
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends curl ca-certificates gnupg \
+ && mkdir -p /etc/apt/keyrings \
+ && curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg \
+ && echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" > /etc/apt/sources.list.d/nodesource.list \
+ && apt-get update \
+ && apt-get install -y --no-install-recommends nodejs \
+ && npm install -g yarn \
+ && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /src
+COPY . .
+
+# build.sh respects --backend / --frontend / --packages / --runtime / --framework
+RUN ./build.sh --backend --frontend --packages --runtime linux-musl-x64 --framework net8.0
+
+# Sanity check: the artifact directory must exist and contain Lidarr.dll
+RUN test -f /src/_artifacts/linux-musl-x64/net8.0/Lidarr/Lidarr.dll || \
+    (echo "BUILD FAILED — Lidarr.dll missing from artifacts" && ls -la /src/_artifacts/ && exit 1)
+
+
+FROM ghcr.io/hotio/lidarr:nightly
+
+# Replace the hotio image's bundled binaries with our fork's build. Hotio's
+# entrypoint, s6 services, PUID/PGID handling, and /config volume all stay
+# the same; only the .NET app code changes.
+RUN rm -rf /app/bin
+
+COPY --from=builder --chown=root:root /src/_artifacts/linux-musl-x64/net8.0/Lidarr/ /app/bin/
+
+# Stamp a marker file so it's obvious from inside the container which build
+# is running. Useful for "is this the fork?" debugging.
+RUN echo "fork: shaunrd0/Lidarr, track-monitored feature, built $(date -u +%Y-%m-%dT%H:%M:%SZ)" > /app/bin/FORK_INFO.txt

@@ -18,6 +18,7 @@ namespace NzbDrone.Core.Music
         List<Track> TracksWithFiles(int artistId);
         List<Track> TracksWithoutFiles(int albumId);
         void SetFileId(List<Track> tracks);
+        void SetMonitored(IEnumerable<int> ids, bool monitored);
         void DetachTrackFile(int trackFileId);
     }
 
@@ -105,6 +106,12 @@ namespace NzbDrone.Core.Music
         public void SetFileId(List<Track> tracks)
         {
             SetFields(tracks, t => t.TrackFileId);
+        }
+
+        public void SetMonitored(IEnumerable<int> ids, bool monitored)
+        {
+            var tracks = ids.Select(id => new Track { Id = id, Monitored = monitored }).ToList();
+            SetFields(tracks, t => t.Monitored);
         }
 
         public void DetachTrackFile(int trackFileId)

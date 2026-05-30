@@ -47,6 +47,12 @@ export const defaultState = {
         isVisible: true
       },
       {
+        name: 'tracks',
+        label: () => translate('Tracks'),
+        isSortable: false,
+        isVisible: true
+      },
+      {
         name: 'releaseDate',
         label: () => translate('ReleaseDate'),
         isSortable: true,
@@ -124,6 +130,12 @@ export const defaultState = {
         name: 'albumType',
         label: () => translate('AlbumType'),
         isSortable: true,
+        isVisible: true
+      },
+      {
+        name: 'tracks',
+        label: () => translate('Tracks'),
+        isSortable: false,
         isVisible: true
       },
       {

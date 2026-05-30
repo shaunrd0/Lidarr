@@ -94,6 +94,10 @@ namespace NzbDrone.Core.Music
 #pragma warning disable CS0472
         private SqlBuilder AlbumsWithoutFilesBuilder(DateTime currentTime)
         {
+            // The .Where<Track>(t => t.Monitored == true) below is the load-bearing
+            // fork addition. Without it Lidarr would re-search albums whose only
+            // missing tracks are unmonitored (e.g., 1-star tracks intentionally
+            // deleted by external tooling) — see fork README.
             return Builder()
                     .Join<Album, Artist>((l, r) => l.ArtistMetadataId == r.ArtistMetadataId)
                     .Join<Album, AlbumRelease>((a, r) => a.Id == r.AlbumId)
@@ -101,6 +105,7 @@ namespace NzbDrone.Core.Music
                     .LeftJoin<Track, TrackFile>((t, f) => t.TrackFileId == f.Id)
                     .Where<TrackFile>(f => f.Id == null)
                     .Where<AlbumRelease>(r => r.Monitored == true)
+                    .Where<Track>(t => t.Monitored == true)
                     .Where<Album>(a => a.ReleaseDate <= currentTime)
                     .GroupBy<Album>(x => x.Id)
                     .GroupBy<Artist>(x => x.SortName);
@@ -119,12 +124,16 @@ namespace NzbDrone.Core.Music
 
         private SqlBuilder AlbumsWhereCutoffUnmetBuilder(List<QualitiesBelowCutoff> qualitiesBelowCutoff)
         {
+            // Parallel to AlbumsWithoutFilesBuilder — track-monitor gate for cutoff
+            // upgrade searches too. Otherwise upgrades would re-grab releases that
+            // contain unmonitored tracks.
             return Builder()
                     .Join<Album, Artist>((l, r) => l.ArtistMetadataId == r.ArtistMetadataId)
                     .Join<Album, AlbumRelease>((a, r) => a.Id == r.AlbumId)
                     .Join<AlbumRelease, Track>((r, t) => r.Id == t.AlbumReleaseId)
                     .LeftJoin<Track, TrackFile>((t, f) => t.TrackFileId == f.Id)
                     .Where<AlbumRelease>(r => r.Monitored == true)
+                    .Where<Track>(t => t.Monitored == true)
                     .Where(BuildQualityCutoffWhereClause(qualitiesBelowCutoff))
                     .GroupBy<Album>(x => x.Id)
                     .GroupBy<Artist>(x => x.SortName);

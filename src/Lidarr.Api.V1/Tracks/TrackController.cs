@@ -50,5 +50,18 @@ namespace Lidarr.Api.V1.Tracks
 
             return MapToResource(_trackService.GetTracks(trackIds), false, false);
         }
+
+        [HttpPut("monitor")]
+        [Consumes("application/json")]
+        public IActionResult SetMonitored([FromBody] TracksMonitoredResource resource)
+        {
+            if (resource?.TrackIds == null || resource.TrackIds.Count == 0)
+            {
+                throw new BadRequestException("trackIds must contain at least one id");
+            }
+
+            _trackService.SetMonitored(resource.TrackIds, resource.Monitored);
+            return Accepted(MapToResource(_trackService.GetTracks(resource.TrackIds), false, false));
+        }
     }
 }

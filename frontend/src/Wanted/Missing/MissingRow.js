@@ -19,6 +19,7 @@ function MissingRow(props) {
     title,
     lastSearchTime,
     disambiguation,
+    statistics,
     isSelected,
     columns,
     onSelectedChange
@@ -27,6 +28,11 @@ function MissingRow(props) {
   if (!artist) {
     return null;
   }
+
+  const {
+    trackFileCount = 0,
+    trackCount = 0
+  } = statistics || {};
 
   return (
     <TableRow>
@@ -78,6 +84,18 @@ function MissingRow(props) {
             );
           }
 
+          if (name === 'tracks') {
+            // trackCount = "wanted" tracks (monitored + released, or with-file).
+            // With the fork's Tracks.Monitored column this matches what the
+            // user actually expects to see downloaded for this album — not
+            // the full release track count (which would be totalTrackCount).
+            return (
+              <TableRowCell key={name}>
+                {trackFileCount}/{trackCount}
+              </TableRowCell>
+            );
+          }
+
           if (name === 'releaseDate') {
             return (
               <RelativeDateCellConnector
@@ -125,6 +143,7 @@ MissingRow.propTypes = {
   title: PropTypes.string.isRequired,
   lastSearchTime: PropTypes.string,
   disambiguation: PropTypes.string,
+  statistics: PropTypes.object,
   isSelected: PropTypes.bool,
   columns: PropTypes.arrayOf(PropTypes.object).isRequired,
   onSelectedChange: PropTypes.func.isRequired

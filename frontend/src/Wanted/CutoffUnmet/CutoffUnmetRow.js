@@ -22,6 +22,7 @@ function CutoffUnmetRow(props) {
     title,
     lastSearchTime,
     disambiguation,
+    statistics,
     isSelected,
     columns,
     onSelectedChange
@@ -30,6 +31,11 @@ function CutoffUnmetRow(props) {
   if (!artist) {
     return null;
   }
+
+  const {
+    trackFileCount = 0,
+    trackCount = 0
+  } = statistics || {};
 
   return (
     <TableRow>
@@ -77,6 +83,14 @@ function CutoffUnmetRow(props) {
             return (
               <TableRowCell key={name}>
                 {albumType}
+              </TableRowCell>
+            );
+          }
+
+          if (name === 'tracks') {
+            return (
+              <TableRowCell key={name}>
+                {trackFileCount}/{trackCount}
               </TableRowCell>
             );
           }
@@ -144,6 +158,7 @@ CutoffUnmetRow.propTypes = {
   title: PropTypes.string.isRequired,
   lastSearchTime: PropTypes.string,
   disambiguation: PropTypes.string,
+  statistics: PropTypes.object,
   isSelected: PropTypes.bool,
   columns: PropTypes.arrayOf(PropTypes.object).isRequired,
   onSelectedChange: PropTypes.func.isRequired
